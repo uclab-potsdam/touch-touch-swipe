@@ -1,4 +1,4 @@
-# ig-journey
+# touch touch swipe
 
 ## Project setup
 ```
