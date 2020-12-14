@@ -54,7 +54,7 @@ export default {
 
 .introduction p {
   width: 440px;
-  margin: 22px 0 0;
+  margin: 20px 0 0;
   -webkit-hyphens: auto;
   hyphens: auto;
 }
