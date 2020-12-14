@@ -11,9 +11,8 @@
           :style="topicMargins(index)"
         />
       </div>
-      <div :class="'visualization' + (currentlyWithinStory ? ' story' : '')">
+      <div :class="'visualization' + (currentlyWithinStory ? ' story' : '') + (currentlyPaused ? ' paused' : '')">
         <div class="data">
-          <div class="clock">{{ currentTimestampClock }}</div>
           <div class="device">
             <div ref="screen" :class="'screen ' + currentContentType"></div>
             <ExampleTouches />
@@ -22,22 +21,32 @@
               <span v-else>Viewing</span>
               {{ contentTypeTitles[language][currentContentType] }}
             </div>
-            <div class="status interaction">
-              <span v-if="language === 'de'">Letzte Interaktion</span>
-              <span v-else>Last Interaction</span>
-              {{ mostRecentTouchTitle }}
+            <div class="status clock">
+              <span v-if="language === 'de'">{{ currentlyPaused ? 'Pausiert' : 'Uhrzeit' }}</span>
+              <span v-else>{{ currentlyPaused ? 'Paused' : 'Clock' }}</span>
+              {{ currentTimestampClock }}
             </div>
           </div>
+          <div class="interactions">
+            <div class="previous-3">{{ touchTitleForIndex(mostRecentTouchIndex - 3) }}</div>
+            <div class="previous-2">{{ touchTitleForIndex(mostRecentTouchIndex - 2) }}</div>
+            <div class="previous-1">{{ touchTitleForIndex(mostRecentTouchIndex - 1) }}</div>
+            <div class="previous-0">{{ touchTitleForIndex(mostRecentTouchIndex) }}</div>
+          </div>
           <div class="legend">
-            <div class="timestamp">Timestamp</div>
-            <div class="navigation-1">Navigation</div>
-            <div class="navigation-2">Navigation</div>
-            <div class="touch-area">
-              <span v-if="language === 'de'">Touch-<br>Fläche</span>
-              <span v-else>Touch<br>Area</span>
+            <ExampleInteractions :language="language" />
+            <div class="labels">
+              <div class="last-interactions">
+                <span v-if="language === 'de'">Letzte Interaktionen</span>
+                <span v-else>Last Interactions</span>
+              </div>
+              <div class="touch-area">
+                <span v-if="language === 'de'">Touch-<br>Fläche</span>
+                <span v-else>Touch<br>Area</span>
+              </div>
+              <div class="touch">Touch</div>
+              <div class="swipe">Swipe</div>
             </div>
-            <div class="tap">Touch</div>
-            <div class="swipe">Swipe</div>
           </div>
         </div>
       </div>
@@ -48,6 +57,7 @@
 <script>
 import Topic from './Topic.vue';
 import ExampleTouches from './ExampleTouches.vue';
+import ExampleInteractions from './ExampleInteractions.vue';
 
 const seedrandom = require('seedrandom');
 
@@ -56,7 +66,8 @@ export default {
 
   components: {
     Topic,
-    ExampleTouches
+    ExampleTouches,
+    ExampleInteractions
   },
 
   props: {
@@ -91,6 +102,7 @@ export default {
 
       currentTimestamp: 0,
       currentlyWithinStory: false,
+      currentlyPaused: false,
 
       contentTypeTitles: {
         en: {
@@ -258,7 +270,7 @@ export default {
       });
       return touchIndexes;
     },
-    recentTouches() {
+    recentVisibleTouches() {
       if (this.currentlyWithinStory === true) {
         const pastTouchesInRange = this.touches.filter(
           touch => touch.timestamp <= this.currentTimestamp
@@ -269,27 +281,22 @@ export default {
         return false;
       }
     },
-    mostRecentTouch() {
-      let reverseTouches = this.touches.slice().reverse();
-      const mostRecentTouch = reverseTouches.find(touch => touch.timestamp <= this.currentTimestamp);
+    mostRecentTouchIndex() {
+      const reverseTouches = this.touches.slice().reverse(),
+            reverseMostRecentIndex = reverseTouches.findIndex(touch => touch.timestamp <= this.currentTimestamp);
 
-      if (mostRecentTouch) {
-        return mostRecentTouch;
+      if (reverseMostRecentIndex !== -1) {
+        return this.touches.length - (reverseMostRecentIndex + 1);
       } else {
-        return this.touches[0];
-      }
-    },
-    mostRecentTouchTitle() {
-      const contextSensitiveAction = this.contextAwareTouchAction(this.mostRecentTouch.action);
-
-      if (contextSensitiveAction in this.touchTitles[this.language][this.currentContentType]) {
-        return this.touchTitles[this.language][this.currentContentType][contextSensitiveAction];
-      } else {
-        return this.mostRecentTouch.action; 
+        return false;
       }
     },
     currentContentType() {
-      return this.mostRecentTouch.content;
+      if (this.mostRecentTouchIndex === false) {
+        return this.touches[0].content;
+      } else {
+        return this.touches[this.mostRecentTouchIndex].content;
+      }
     }
   },
 
@@ -323,9 +330,13 @@ export default {
                                - this.topics[closestTopicIndex].elementHeight
                                + currentTimestampOffset
                                - reverseTopicOffsets[reverseClosestTopicIndex];
+          this.currentlyPaused = true;
         } else {
           closestTopicOffset = this.topics[closestTopicIndex].cumulativeHeight;
+          this.currentlyPaused = false;
         }
+      } else {
+        this.currentlyPaused = false;
       }
 
       this.currentTimestamp = this.startTimestamp + elapsedTime - closestTopicOffset * this.millisecondsPerPixel;
@@ -343,13 +354,6 @@ export default {
       }, this);
 
       this.updateCurrentTimestamp();
-    },
-    contextAwareTouchAction(action) {
-      if (action in this.touchReplacements[this.currentContentType]) {
-        return this.touchReplacements[this.currentContentType][action];
-      } else {
-        return action;
-      }
     },
     topicMargins(index) {
       let elapsedTime;
@@ -369,7 +373,28 @@ export default {
 
       return style;
     },
-    calculateCoordinate(coordinate, touchIndex, parameters, diameter) {
+    contextAwareTouchAction(touch) {
+      if (touch.action in this.touchReplacements[touch.content]) {
+        return this.touchReplacements[touch.content][touch.action];
+      } else {
+        return touch.action;
+      }
+    },
+    touchTitleForIndex(index) {
+      if (index !== false && index >= 0 && index <= this.touches.length - 1) {
+        const touch = this.touches[index];
+        const contextAwareAction = this.contextAwareTouchAction(touch);
+
+        if (contextAwareAction in this.touchTitles[this.language][touch.content]) {
+          return this.touchTitles[this.language][touch.content][contextAwareAction];
+        } else {
+          return touch.action; 
+        }
+      } else {
+        return '';
+      }
+    },
+    touchCoordinate(coordinate, touchIndex, parameters, diameter) {
       if (coordinate in parameters) {
         return parameters[coordinate];
       } else {
@@ -388,6 +413,12 @@ export default {
         }
       }
     },
+    touchColor(index, count) {
+      if (index === count - 1) return '000000';
+      else if (index === count - 2) return 'A39300';
+      else if (index === count - 3) return 'C2AE00';
+      else return 'E0CA00';
+    },
     formatDate(date) {
         return date.getHours().toString().padStart(2, '0') + ':'
                + date.getMinutes().toString().padStart(2, '0') + ':'
@@ -400,18 +431,20 @@ export default {
   },
 
   watch: {
-    recentTouches: function(updatedRecentTouches) {
+    recentVisibleTouches: function(updatedTouches) {
       const screen = this.$refs.screen;
       screen.textContent = '';
 
-      if (updatedRecentTouches.length) {
-        updatedRecentTouches.forEach(function(touch) {
-          const contextSensitiveAction = this.contextAwareTouchAction(touch.action);
+      const updatedTouchesCount = updatedTouches.length;
 
-          if (contextSensitiveAction in this.touchParameters) {
+      if (updatedTouchesCount) {
+        updatedTouches.forEach(function(touch, recentsIndex) {
+          const contextAwareAction = this.contextAwareTouchAction(touch);
+
+          if (contextAwareAction in this.touchParameters) {
             const touchIndex = this.touchIndexesByTimestamp[touch.timestamp],
                   touchRangeProgress = (this.currentTimestamp - touch.timestamp) / this.millisecondsTouchRange,
-                  parameters = this.touchParameters[contextSensitiveAction];
+                  parameters = this.touchParameters[contextAwareAction];
             
             if (('xCount' in parameters && 'xTranslate' in parameters) || ('yCount' in parameters && 'yTranslate' in parameters)) {
               let swipeAxis;
@@ -430,16 +463,18 @@ export default {
                 touchElement.style.height = this.touchSwipeStepDiameter + 'px';
 
                 if (swipeAxis === 'x') {
-                  touchElement.style.left = (this.calculateCoordinate('x', touchIndex, parameters, this.touchSwipeStepDiameter) + i * parameters.xTranslate) + 'px';
-                  touchElement.style.top = this.calculateCoordinate('y', touchIndex, parameters, this.touchSwipeStepDiameter) + 'px';
+                  touchElement.style.left = (this.touchCoordinate('x', touchIndex, parameters, this.touchSwipeStepDiameter) + i * parameters.xTranslate) + 'px';
+                  touchElement.style.top = this.touchCoordinate('y', touchIndex, parameters, this.touchSwipeStepDiameter) + 'px';
                 } else {
-                  touchElement.style.left = this.calculateCoordinate('x', touchIndex, parameters, this.touchSwipeStepDiameter) + 'px';
-                  touchElement.style.top = (this.calculateCoordinate('y', touchIndex, parameters, this.touchSwipeStepDiameter) + i * parameters.yTranslate) + 'px';
+                  touchElement.style.left = this.touchCoordinate('x', touchIndex, parameters, this.touchSwipeStepDiameter) + 'px';
+                  touchElement.style.top = (this.touchCoordinate('y', touchIndex, parameters, this.touchSwipeStepDiameter) + i * parameters.yTranslate) + 'px';
                 }
 
                 let offsetTouchRangeProgress = 1 - touchRangeProgress + i * (this.swipeDurationFactor / (parameters[swipeAxis + 'Count'] - 1));
                 if (offsetTouchRangeProgress > 1 || offsetTouchRangeProgress < 0) offsetTouchRangeProgress = 0;
                 touchElement.style.transform = 'scale(' + this.easeIn(offsetTouchRangeProgress) + ')';
+
+                touchElement.style.backgroundColor = '#' + this.touchColor(recentsIndex, updatedTouchesCount);
 
                 screen.appendChild(touchElement);
               }
@@ -449,9 +484,10 @@ export default {
               touchElement.className = 'touch tap';
               touchElement.style.width = this.touchTapDiameter + 'px';
               touchElement.style.height = this.touchTapDiameter + 'px';
-              touchElement.style.left = this.calculateCoordinate('x', touchIndex, parameters, this.touchTapDiameter) + 'px';
-              touchElement.style.top = this.calculateCoordinate('y', touchIndex, parameters, this.touchTapDiameter) + 'px';
+              touchElement.style.left = this.touchCoordinate('x', touchIndex, parameters, this.touchTapDiameter) + 'px';
+              touchElement.style.top = this.touchCoordinate('y', touchIndex, parameters, this.touchTapDiameter) + 'px';
               touchElement.style.transform = 'scale(' + this.easeIn(1 - (touchRangeProgress > 1 ? 1 : touchRangeProgress)) + ')';
+              touchElement.style.backgroundColor = '#' + this.touchColor(recentsIndex, updatedTouchesCount);
 
               screen.appendChild(touchElement);
             }
@@ -549,10 +585,10 @@ export default {
   margin-top: 44px;
   border: 1px solid #000;
   background: url('../assets/screen-feed.svg') center no-repeat #FFE600;
-  transition: all 0.1s ease-in-out;
 }
 
 .visualization .data .device .screen.legend {
+  /*display: none;*/
   position: absolute;
   left: 9px;
 }
@@ -577,12 +613,6 @@ export default {
   left: -40px;
   right: -40px;
   font-weight: bold;
-  opacity: 0;
-  transition: opacity 0.2s ease-in-out;
-}
-
-.visualization.story .data .status {
-  opacity: 1;
 }
 
 .visualization .data .status.content {
@@ -590,9 +620,10 @@ export default {
   margin-bottom: 19px;
 }
 
-.visualization .data .status.interaction {
+.visualization .data .status.clock {
   top: 100%;
   margin-top: 21px;
+  font-variant-numeric: slashed-zero;
 }
 
 .visualization .data .status span {
@@ -604,31 +635,47 @@ export default {
   color: rgba(0,0,0,0.3);
 }
 
-.visualization .data .clock {
+.visualization .data .interactions {
   position: absolute;
-  top: 50%;
-  right: 0;
-  margin-top: -10px;
-  padding-left: 6px;
-  font-size: 16px;
+  top: 0;
+  bottom: 0;
+  left: 320px;
+  right: -80px;
+  text-align: left;
+  font-size: 18px;
   font-weight: bold;
-  font-variant-numeric: slashed-zero;
-  line-height: 20px;
 }
 
-.visualization .data .clock:before {
+.visualization .data .interactions div {
   position: absolute;
-  display: block;
-  content: '';
-  top: 10px;
-  right: 100%;
-  width: 100px;
-  height: 1px;
-  background: #000;
-  z-index: -1;
+  padding: 0 4px;
+}
+
+.visualization .data .interactions .previous-3 {
+  top: 159px;
+  color: rgba(0,0,0,0.07);
+}
+
+.visualization .data .interactions .previous-2 {
+  top: 192px;
+  color: rgba(0,0,0,0.12);
+}
+
+.visualization .data .interactions .previous-1 {
+  top: 225px;
+  color: rgba(0,0,0,0.23);
+}
+
+.visualization .data .interactions .previous-0 {
+  top: 258px;
+}
+
+.visualization.paused .data .interactions .previous-0 {
+  background: #FFE600;
 }
 
 .visualization .legend {
+  /*display: none;*/
   transition: opacity 0.2s ease-in-out !important;
 }
 
@@ -636,66 +683,78 @@ export default {
   opacity: 0;
 }
 
-.visualization .legend div {
+.visualization .legend .labels div {
   position: absolute;
   display: inline-block;
   font-size: 14px;
   font-weight: 400;
   font-style: italic;
   line-height: 20px;
-  color: rgba(0,0,0,0.6);
+  color: rgba(0,0,0,0.55);
 }
 
-.visualization .legend div:before {
+.visualization .legend .labels div:before, .visualization .legend .labels div:after {
   position: absolute;
   display: block;
   content: '';
-  top: 10px;
+  background: rgba(0,0,0,0.375);
+}
+
+.visualization .legend .labels div.last-interactions {
+  top: 290px;
+  right: 14px;
+  padding-top: 2px;
+}
+
+#app.de .visualization .legend .labels div.last-interactions {
+  right: -7px;
+}
+
+.visualization .legend .labels div.last-interactions:before, .visualization .legend .labels div.last-interactions:after {
+  top: 12px;
+  width: 33px;
   height: 1px;
-  background: rgba(0,0,0,0.4);
 }
 
-.visualization .legend div.timestamp {
-  top: 236px;
-  right: 12px;
+#app.de .visualization .legend .labels div.last-interactions:before, #app.de .visualization .legend .labels div.last-interactions:after {
+  width: 35px;
 }
 
-.visualization .legend div.navigation-1 {
-  top: 107px;
-  right: 89px;
-  padding-left: 5px;
+.visualization .legend .labels div.last-interactions:before {
+  left: 100%;
+  margin-left: 5px;
 }
 
-.visualization .legend div.navigation-2 {
-  top: 417px;
-  right: 89px;
-  padding-left: 5px;
+.visualization .legend .labels div.last-interactions:after {
+  right: 100%;
+  margin-right: 5px;
 }
 
-.visualization .legend div.navigation-1:before, .visualization .legend div.navigation-2:before {
+.visualization .legend .labels div.navigation-1:before, .visualization .legend .labels div.navigation-2:before {
   right: 100%;
   width: 46px;
 }
 
-.visualization .legend div.touch-area {
+.visualization .legend .labels div.touch-area {
   top: 257px;
-  right: 409px;
-  padding-right: 6px;
+  right: 400px;
+  padding-right: 5px;
   line-height: 14px;
 }
 
-.visualization .legend div.touch-area:before {
+.visualization .legend .labels div.touch-area:before {
   top: 14px;
   left: 100%;
-  width: 30px;
+  width: 21px;
+  height: 1px;
 }
 
-.visualization .legend div.tap {
+.visualization .legend .labels div.touch {
   top: 189px;
   left: 129px;
 }
 
-.visualization .legend div.swipe {
+.visualization .legend .labels div.swipe {
   top: 321px;
   left: 189px;
 }
