@@ -1,5 +1,6 @@
 <template>
   <div id="app" :class="language">
+    <Logger />
     <Introduction
       ref="introduction"
       :introduction="introduction"
@@ -33,6 +34,7 @@
 import Introduction from './components/Introduction.vue';
 import Story from './components/Story.vue';
 import Conclusion from './components/Conclusion.vue';
+import Logger from './components/logging/Logger.vue';
 
 import introduction from './data/introduction.json';
 import interview from './data/interview.json';
@@ -45,7 +47,8 @@ export default {
   components: {
     Introduction,
     Story,
-    Conclusion
+    Conclusion,
+    Logger
   },
 
   data () {
