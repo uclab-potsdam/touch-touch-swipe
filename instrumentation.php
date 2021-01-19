@@ -1,4 +1,6 @@
 <?php
+// Code originally developed by Jonas Rogge for uclab.fh-potsdam.de/rosenthaler
+// Here minimally adapted to accomodate other events
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
@@ -71,8 +73,7 @@ function processStackReqestContent($fh, $content) {
   $eventTypes = [
     10 => 'MOUSE',
     20 => 'RESIZE',
-    30 => 'STEP',
-    40 => 'PROGRESS'
+    30 => 'CLICK'
   ];
 
   foreach ($content['data'] as $event) {
@@ -85,7 +86,9 @@ function processStackReqestContent($fh, $content) {
       $values[] = $event['data']['x'];
       $values[] = $event['data']['y'];
     } elseif ($event['type'] === 30 || $event['type'] === 40) {
-      $values[] = $event['data'];
+      $values[] = $event['data']['x'];
+      $values[] = $event['data']['y'];
+      $values[] = $event['data']['target'];
     }
 
     $message = implode(', ', $values);

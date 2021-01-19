@@ -3,10 +3,8 @@
 </template>
 
 <script>
-/* eslint-disable */
 import axios from 'axios'
-// import { mapState } from 'vuex'
-
+/* eslint-disable */
 export default {
   data() {
     return {
@@ -14,8 +12,7 @@ export default {
       eventType: {
         mouseMove: 10,
         windowResize: 20,
-        stepChange: 30,
-        stepProgressChange: 40
+        Click: 30
       },
       packageType: {
         init: 10,
@@ -24,37 +21,13 @@ export default {
       packageCounter: 0,
       eventStack: [],
       hostUrl: 'uclab.fh-potsdam.de',
-      instrumentationUrl: '/instrumentation.php'
-    }
-  },
-  // computed: {
-  //   ...mapState({
-  //     scrollStep: (state) =>
-  //       state.scrollytelling ? state.scrollytelling.step : null,
-  //     scrollProgress: (state) =>
-  //       state.scrollytelling ? state.scrollytelling.progress : null
-  //   })
-  // },
-  // watch: {
-  //   scrollStep(newValue, oldValue) {
-  //     this.handleStepChange(newValue)
-  //   },
-  //   scrollProgress(newValue, oldValue) {
-  //     this.handleProgressChange(newValue)
-  //   }
-  // },
-  mounted() {
-    if (window.location.href.includes(this.hostUrl)) {
-      document.onmousemove = this.handleMouseMove
-      window.onresize = this.handleWindowResize
-      this.initLogging()
+      instrumentationUrl: 'swipe/instrumentation.php'
     }
   },
   methods: {
     // log handling
     initLogging() {
       this.id = Date.now()
-      console.log(this.id)
       this.sendInitialLog()
       window.setInterval(this.sendLog, 5000)
     },
@@ -74,13 +47,9 @@ export default {
     handleWindowResize() {
       this.logEvent(this.eventType.windowResize, this.getWindowSize())
     },
-    handleStepChange(newStep) {
-      this.logEvent(this.eventType.stepChange, newStep)
+    handleClick(event) {
+      this.logEvent(this.eventType.Click, this.getClickPar())
     },
-    handleProgressChange(newProgress) {
-      this.logEvent(this.eventType.stepProgressChange, newProgress)
-    },
-
     // server communication
     sendInitialLog() {
       const data = {
@@ -103,7 +72,7 @@ export default {
           type,
           data
         })
-        .then(function(response) { console.log(response) })
+        .then(function(response) {})
         .catch(function(error) {
           console.log(error)
         })
@@ -118,9 +87,33 @@ export default {
         y: window.innerHeight
       }
     },
+    getClickPar (event) {
+      event = event || window.event
+      // Same logic from below.
+      if (event.pageX == null && event.clientX != null) {
+        eventDoc = (event.target && event.target.ownerDocument) || document
+        doc = eventDoc.documentElement
+        body = eventDoc.body
+
+        event.pageX =
+          event.clientX +
+          ((doc && doc.scrollLeft) || (body && body.scrollLeft) || 0) -
+          ((doc && doc.clientLeft) || (body && body.clientLeft) || 0)
+        event.pageY =
+          event.clientY +
+          ((doc && doc.scrollTop) || (body && body.scrollTop) || 0) -
+          ((doc && doc.clientTop) || (body && body.clientTop) || 0)
+      }
+
+      // returning also target div to know where the click occurred.
+      return {
+        x: event.pageX,
+        y: event.pageY,
+        target: event.target.classList[0]
+      }
+    },
     getMousePosition(event) {
       let eventDoc, doc, body
-
       event = event || window.event // IE-ism
 
       // If pageX/Y aren't available and clientX/Y are,
@@ -146,6 +139,14 @@ export default {
         x: event.pageX,
         y: event.pageY
       }
+    }
+  },
+  mounted() {
+    if (window.location.href.includes(this.hostUrl)) {
+      document.onclick = this.handleClick
+      document.onmousemove = this.handleMouseMove
+      window.onresize = this.handleWindowResize
+      this.initLogging()
     }
   }
 }
