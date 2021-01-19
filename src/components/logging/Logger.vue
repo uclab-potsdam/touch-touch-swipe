@@ -3,6 +3,8 @@
 </template>
 
 <script>
+// This component serve as an inspector. It's collecting all the events we are
+// interested in and then it's using axios to post them and create a log (via instrumentation.php)
 import axios from 'axios'
 /* eslint-disable */
 export default {
@@ -21,6 +23,7 @@ export default {
       },
       packageCounter: 0,
       eventStack: [],
+      // Edit to localhost if you are debugging
       hostUrl: 'uclab.fh-potsdam.de',
       instrumentationUrl: '/swipe/instrumentation.php'
     }
@@ -143,7 +146,6 @@ export default {
           ((doc && doc.scrollTop) || (body && body.scrollTop) || 0) -
           ((doc && doc.clientTop) || (body && body.clientTop) || 0)
       }
-
       // Use event.pageX / event.pageY here
       return {
         x: event.pageX,
@@ -152,6 +154,7 @@ export default {
     }
   },
   mounted() {
+    // We can eventually have a condition that starts logging only with users consent
     if (window.location.href.includes(this.hostUrl)) {
       console.log('started logging')
       document.onclick = this.handleClick
@@ -159,6 +162,8 @@ export default {
       window.onresize = this.handleWindowResize
       window.onscroll = this.handleScroll
       this.initLogging()
+    } else {
+      console.log('logging not active')
     }
   }
 }

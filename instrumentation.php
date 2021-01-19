@@ -1,5 +1,5 @@
 <?php
-// Code originally developed by Jonas Rogge for uclab.fh-potsdam.de/rosenthaler
+// Code originally developed by Jonas Arndt for uclab.fh-potsdam.de/rosenthaler
 // Here minimally adapted to accomodate other events
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
