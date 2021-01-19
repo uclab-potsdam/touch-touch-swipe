@@ -12,7 +12,8 @@ export default {
       eventType: {
         mouseMove: 10,
         windowResize: 20,
-        Click: 30
+        Click: 30,
+        pageScroll: 40
       },
       packageType: {
         init: 10,
@@ -21,7 +22,7 @@ export default {
       packageCounter: 0,
       eventStack: [],
       hostUrl: 'uclab.fh-potsdam.de',
-      instrumentationUrl: 'swipe/instrumentation.php'
+      instrumentationUrl: '/swipe/instrumentation.php'
     }
   },
   methods: {
@@ -43,6 +44,9 @@ export default {
     // handle events
     handleMouseMove(event) {
       this.logEvent(this.eventType.mouseMove, this.getMousePosition())
+    },
+    handleScroll() {
+      this.logEvent(this.eventType.pageScroll, this.getScrollPosition())
     },
     handleWindowResize() {
       this.logEvent(this.eventType.windowResize, this.getWindowSize())
@@ -85,6 +89,12 @@ export default {
       return {
         x: window.innerWidth,
         y: window.innerHeight
+      }
+    },
+    getScrollPosition() {
+      return {
+        x: 0,
+        y: window.scrollY
       }
     },
     getClickPar (event) {
@@ -143,9 +153,11 @@ export default {
   },
   mounted() {
     if (window.location.href.includes(this.hostUrl)) {
+      console.log('started logging')
       document.onclick = this.handleClick
       document.onmousemove = this.handleMouseMove
       window.onresize = this.handleWindowResize
+      window.onscroll = this.handleScroll
       this.initLogging()
     }
   }

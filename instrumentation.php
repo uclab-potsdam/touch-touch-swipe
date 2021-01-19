@@ -73,7 +73,8 @@ function processStackReqestContent($fh, $content) {
   $eventTypes = [
     10 => 'MOUSE',
     20 => 'RESIZE',
-    30 => 'CLICK'
+    30 => 'CLICK',
+    40 => 'SCROLL'
   ];
 
   foreach ($content['data'] as $event) {
@@ -82,10 +83,10 @@ function processStackReqestContent($fh, $content) {
       $eventTypes[$event['type']]
     ];
 
-    if ($event['type'] === 10 || $event['type'] === 20) {
+    if ($event['type'] === 10 || $event['type'] === 20 || $event['type'] === 40) {
       $values[] = $event['data']['x'];
       $values[] = $event['data']['y'];
-    } elseif ($event['type'] === 30 || $event['type'] === 40) {
+    } elseif ($event['type'] === 30) {
       $values[] = $event['data']['x'];
       $values[] = $event['data']['y'];
       $values[] = $event['data']['target'];
