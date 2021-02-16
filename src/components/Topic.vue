@@ -74,6 +74,7 @@ export default {
 .topic p span span {
   background: #FFE600;
   box-shadow: -3px 0 0 0 #FFE600, 3px 0 0 0 #FFE600;
+  box-decoration-break: clone;
 }
 
 .topic p.quote {
